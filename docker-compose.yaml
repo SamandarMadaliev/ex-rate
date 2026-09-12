@@ -5,11 +5,15 @@ services:
       dockerfile: Dockerfile
     env_file:
       - .env
+    environment:
+      DATABASE_HOST: db
     ports:
       - "9090:80"
     depends_on:
       db:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     networks:
       - ex-rate
 
@@ -19,6 +23,8 @@ services:
       POSTGRES_USER: ${DATABASE_USER}
       POSTGRES_PASSWORD: ${DATABASE_PASSWORD}
       POSTGRES_DB: ${DATABASE_NAME}
+    ports:
+      - "5432:5432"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DATABASE_USER} -d ${DATABASE_NAME}"]
       interval: 5s
@@ -26,6 +32,23 @@ services:
       retries: 5
     networks:
       - ex-rate
+
+  migrate:
+    image: migrate/migrate:v4.20.1
+    entrypoint: ["/bin/sh", "-c"]
+    env_file:
+      - .env
+    environment:
+      DATABASE_HOST: db
+    volumes:
+      - ./migrations:/migrations
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - ex-rate
+    command:
+      - migrate -path=/migrations -database "postgres://$$DATABASE_USER:$$DATABASE_PASSWORD@$$DATABASE_HOST:$$DATABASE_PORT/$$DATABASE_NAME?sslmode=$$DATABASE_SSLMODE" up
 
 networks:
   ex-rate:

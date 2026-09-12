@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/http"
 
+	router "github.com/SamandarMadaliev/ex-rate/internal/http"
 	"github.com/SamandarMadaliev/ex-rate/pkg/config"
 	"github.com/SamandarMadaliev/ex-rate/pkg/database/postgres"
 )
@@ -22,23 +23,19 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
-	mux := http.NewServeMux()
-	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
-		if err := db.PingContext(r.Context()); err != nil {
-			http.Error(w, "database unavailable", http.StatusServiceUnavailable)
-			return
-		}
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("OK"))
-	})
+	server := &http.Server{
+		Addr:              config.Server.Host + ":" + config.Server.Port,
+		Handler:           router.NewRouter(db),
+		ReadTimeout:       config.Server.ReadTimeout,
+		WriteTimeout:      config.Server.WriteTimeout,
+		IdleTimeout:       config.Server.IdleTimeout,
+		ReadHeaderTimeout: config.Server.ReadHeaderTimeout,
+	}
 
 	app := App{
 		config: config,
 		db:     db,
-		server: &http.Server{
-			Addr:    config.Server.Host + ":" + config.Server.Port,
-			Handler: mux,
-		},
+		server: server,
 	}
 
 	return &app, nil
