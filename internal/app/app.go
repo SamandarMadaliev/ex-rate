@@ -3,10 +3,12 @@ package app
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"net/http"
 
 	router "github.com/SamandarMadaliev/ex-rate/internal/http"
+	"github.com/SamandarMadaliev/ex-rate/internal/repositories"
 	"github.com/SamandarMadaliev/ex-rate/pkg/config"
 	"github.com/SamandarMadaliev/ex-rate/pkg/database/postgres"
 )
@@ -23,9 +25,14 @@ func NewApp(config *config.Config) (*App, error) {
 		return nil, fmt.Errorf("failed to connect to database: %w", err)
 	}
 
+	currencyRepo := repositories.NewCurrencyRepository(db)
+	rateRepo := repositories.NewRateRepository(db)
+
+	routes := router.NewRouter(db, currencyRepo, rateRepo)
+
 	server := &http.Server{
 		Addr:              config.Server.Host + ":" + config.Server.Port,
-		Handler:           router.NewRouter(db),
+		Handler:           routes,
 		ReadTimeout:       config.Server.ReadTimeout,
 		WriteTimeout:      config.Server.WriteTimeout,
 		IdleTimeout:       config.Server.IdleTimeout,
@@ -46,9 +53,11 @@ func (a App) Run() error {
 }
 
 func (a App) Stop() error {
-	if err := a.server.Shutdown(context.Background()); err != nil {
-		return err
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), a.config.Server.ShutdownTimeout)
+	defer cancel()
 
-	return a.db.Close()
+	shutdownErr := a.server.Shutdown(ctx)
+	closeErr := a.db.Close()
+
+	return errors.Join(shutdownErr, closeErr)
 }

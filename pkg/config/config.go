@@ -15,6 +15,7 @@ type Config struct {
 		WriteTimeout      time.Duration
 		IdleTimeout       time.Duration
 		ReadHeaderTimeout time.Duration
+		ShutdownTimeout   time.Duration
 	}
 
 	DB struct {
@@ -38,6 +39,7 @@ func NewConfig() (*Config, error) {
 	c.Server.WriteTimeout = getEnvDuration("HTTP_WRITE_TIMEOUT", 10*time.Second)
 	c.Server.IdleTimeout = getEnvDuration("HTTP_IDLE_TIMEOUT", 60*time.Second)
 	c.Server.ReadHeaderTimeout = getEnvDuration("HTTP_READ_HEADER_TIMEOUT", 5*time.Second)
+	c.Server.ShutdownTimeout = getEnvDuration("HTTP_SHUTDOWN_TIMEOUT", 10*time.Second)
 
 	c.DB.Host = getEnv("DATABASE_HOST", "localhost")
 	c.DB.Port = getEnv("DATABASE_PORT", "5432")
