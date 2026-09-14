@@ -59,6 +59,10 @@ func CreateRateHandler(rateRepo *repositories.RateRepository, currencyRepo *repo
 func GetRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
+		if !helpers.IsValidUUID(id) {
+			helpers.WriteError(w, http.StatusNotFound, "rate not found")
+			return
+		}
 
 		rate, err := rateRepo.GetByID(r.Context(), id)
 		if err != nil {
