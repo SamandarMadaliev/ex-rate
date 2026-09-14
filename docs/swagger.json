@@ -1,0 +1,296 @@
+{
+    "swagger": "2.0",
+    "info": {
+        "description": "Currency exchange rate service that fetches and stores rates for currency pairs.",
+        "title": "Ex-Rate API",
+        "contact": {},
+        "version": "1.0"
+    },
+    "basePath": "/api/v1",
+    "paths": {
+        "/currencies": {
+            "get": {
+                "description": "Returns all currencies known to the service",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "currencies"
+                ],
+                "summary": "List currencies",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "array",
+                            "items": {
+                                "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.Currency"
+                            }
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/health": {
+            "get": {
+                "description": "Pings the database to verify the service is ready to serve traffic",
+                "produces": [
+                    "text/plain"
+                ],
+                "tags": [
+                    "health"
+                ],
+                "summary": "Health check",
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "type": "string"
+                        }
+                    },
+                    "503": {
+                        "description": "Service Unavailable",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/rates": {
+            "post": {
+                "description": "Creates a pending rate row for a currency pair and enqueues a background job to fetch its price",
+                "consumes": [
+                    "application/json"
+                ],
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rates"
+                ],
+                "summary": "Create a rate",
+                "parameters": [
+                    {
+                        "description": "Currency pair",
+                        "name": "request",
+                        "in": "body",
+                        "required": true,
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.CreateRateRequest"
+                        }
+                    }
+                ],
+                "responses": {
+                    "201": {
+                        "description": "Created",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.CreateRateResponse"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    },
+                    "422": {
+                        "description": "Unprocessable Entity",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/rates/latest": {
+            "get": {
+                "description": "Returns the most recently created rate for the given base/quote currency IDs",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rates"
+                ],
+                "summary": "Get the latest rate for a pair",
+                "parameters": [
+                    {
+                        "type": "integer",
+                        "description": "Base currency ID",
+                        "name": "base",
+                        "in": "query",
+                        "required": true
+                    },
+                    {
+                        "type": "integer",
+                        "description": "Quote currency ID",
+                        "name": "quote",
+                        "in": "query",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.Rate"
+                        }
+                    },
+                    "400": {
+                        "description": "Bad Request",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        },
+        "/rates/{id}": {
+            "get": {
+                "description": "Returns the rate row for the given ID",
+                "produces": [
+                    "application/json"
+                ],
+                "tags": [
+                    "rates"
+                ],
+                "summary": "Get a rate by ID",
+                "parameters": [
+                    {
+                        "type": "string",
+                        "description": "Rate ID (UUID)",
+                        "name": "id",
+                        "in": "path",
+                        "required": true
+                    }
+                ],
+                "responses": {
+                    "200": {
+                        "description": "OK",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.Rate"
+                        }
+                    },
+                    "404": {
+                        "description": "Not Found",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    },
+                    "500": {
+                        "description": "Internal Server Error",
+                        "schema": {
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse"
+                        }
+                    }
+                }
+            }
+        }
+    },
+    "definitions": {
+        "github_com_SamandarMadaliev_ex-rate_internal_http_schemas.CreateRateRequest": {
+            "type": "object",
+            "properties": {
+                "base_currency_id": {
+                    "type": "integer"
+                },
+                "quote_currency_id": {
+                    "type": "integer"
+                }
+            }
+        },
+        "github_com_SamandarMadaliev_ex-rate_internal_http_schemas.CreateRateResponse": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_SamandarMadaliev_ex-rate_internal_http_schemas.ErrorResponse": {
+            "type": "object",
+            "properties": {
+                "error": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_SamandarMadaliev_ex-rate_internal_models.Currency": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "slug": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_SamandarMadaliev_ex-rate_internal_models.Rate": {
+            "type": "object",
+            "properties": {
+                "base_currency_id": {
+                    "type": "integer"
+                },
+                "created_at": {
+                    "type": "string"
+                },
+                "id": {
+                    "type": "string"
+                },
+                "price": {
+                    "type": "number"
+                },
+                "price_timestamp": {
+                    "type": "string"
+                },
+                "quote_currency_id": {
+                    "type": "integer"
+                },
+                "status": {
+                    "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.RateStatus"
+                },
+                "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_SamandarMadaliev_ex-rate_internal_models.RateStatus": {
+            "type": "string",
+            "enum": [
+                "pending",
+                "completed",
+                "failed"
+            ],
+            "x-enum-varnames": [
+                "RateStatusPending",
+                "RateStatusCompleted",
+                "RateStatusFailed"
+            ]
+        }
+    }
+}

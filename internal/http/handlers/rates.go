@@ -16,6 +16,18 @@ import (
 	"github.com/go-chi/chi/v5"
 )
 
+// CreateRateHandler godoc
+// @Summary      Create a rate
+// @Description  Creates a pending rate row for a currency pair and enqueues a background job to fetch its price
+// @Tags         rates
+// @Accept       json
+// @Produce      json
+// @Param        request  body      schemas.CreateRateRequest  true  "Currency pair"
+// @Success      201      {object}  schemas.CreateRateResponse
+// @Failure      400      {object}  schemas.ErrorResponse
+// @Failure      422      {object}  schemas.ErrorResponse
+// @Failure      500      {object}  schemas.ErrorResponse
+// @Router       /rates [post]
 func CreateRateHandler(
 	rateRepo *repositories.RateRepository,
 	currencyRepo *repositories.CurrencyRepository,
@@ -69,6 +81,16 @@ func CreateRateHandler(
 	}
 }
 
+// GetRateHandler godoc
+// @Summary      Get a rate by ID
+// @Description  Returns the rate row for the given ID
+// @Tags         rates
+// @Produce      json
+// @Param        id   path      string  true  "Rate ID (UUID)"
+// @Success      200  {object}  models.Rate
+// @Failure      404  {object}  schemas.ErrorResponse
+// @Failure      500  {object}  schemas.ErrorResponse
+// @Router       /rates/{id} [get]
 func GetRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
@@ -91,6 +113,18 @@ func GetRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 	}
 }
 
+// LatestRateHandler godoc
+// @Summary      Get the latest rate for a pair
+// @Description  Returns the most recently created rate for the given base/quote currency IDs
+// @Tags         rates
+// @Produce      json
+// @Param        base   query     int  true  "Base currency ID"
+// @Param        quote  query     int  true  "Quote currency ID"
+// @Success      200    {object}  models.Rate
+// @Failure      400    {object}  schemas.ErrorResponse
+// @Failure      404    {object}  schemas.ErrorResponse
+// @Failure      500    {object}  schemas.ErrorResponse
+// @Router       /rates/latest [get]
 func LatestRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		req, err := schemas.ParseGetLatestRateRequest(r)

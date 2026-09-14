@@ -1,7 +1,7 @@
 BINARY  := ex-rate
 PORT    ?= 8080
 
-.PHONY: run build test tidy migrate-up migrate-down migrate-create
+.PHONY: run build test tidy swagger migrate-up migrate-down migrate-create
 
 run:
 	go run ./cmd/main.go
@@ -14,6 +14,9 @@ test:
 
 tidy:
 	go mod tidy
+
+swagger:
+	swag init -g cmd/main.go -o docs --parseInternal --parseDependency
 
 migrate-up:
 	docker compose up migrate
