@@ -1,7 +1,6 @@
 package app
 
 import (
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -14,7 +13,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-var rootCmd = &cobra.Command{
+var RootCmd = &cobra.Command{
 	Use:   "http-server",
 	Short: "Start HTTP Server",
 	Run: func(cmd *cobra.Command, args []string) {
@@ -49,11 +48,4 @@ var rootCmd = &cobra.Command{
 		_ = app.Stop()
 		log.Println("application backend server stopped gracefully")
 	},
-}
-
-func Execute() {
-	if err := rootCmd.Execute(); err != nil {
-		fmt.Fprintf(os.Stderr, "error while executing your CLI '%s'", err)
-		os.Exit(1)
-	}
 }
