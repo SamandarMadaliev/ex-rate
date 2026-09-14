@@ -2,6 +2,7 @@ package config
 
 import (
 	"os"
+	"strconv"
 	"time"
 )
 
@@ -26,6 +27,16 @@ type Config struct {
 		Name     string
 		SSLMode  string
 	}
+
+	Worker struct {
+		Count      int
+		BufferSize int
+	}
+
+	ExRateAPI struct {
+		URL   string
+		Token string
+	}
 }
 
 func NewConfig() (*Config, error) {
@@ -48,6 +59,12 @@ func NewConfig() (*Config, error) {
 	c.DB.Name = getEnv("DATABASE_NAME", "postgres")
 	c.DB.SSLMode = getEnv("DATABASE_SSLMODE", "disable")
 
+	c.Worker.Count = getEnvInt("WORKER_COUNT", 5)
+	c.Worker.BufferSize = getEnvInt("WORKER_BUFFER_SIZE", 100)
+
+	c.ExRateAPI.URL = getEnv("EX_RATE_API_URL", "")
+	c.ExRateAPI.Token = getEnv("EX_RATE_API_TOKEN", "")
+
 	return c, nil
 }
 
@@ -62,6 +79,15 @@ func getEnvDuration(key string, defaultValue time.Duration) time.Duration {
 	if value, exists := os.LookupEnv(key); exists {
 		if d, err := time.ParseDuration(value); err == nil {
 			return d
+		}
+	}
+	return defaultValue
+}
+
+func getEnvInt(key string, defaultValue int) int {
+	if value, exists := os.LookupEnv(key); exists {
+		if i, err := strconv.Atoi(value); err == nil {
+			return i
 		}
 	}
 	return defaultValue

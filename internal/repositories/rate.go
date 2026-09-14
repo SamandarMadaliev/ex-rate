@@ -38,6 +38,23 @@ func (r *RateRepository) Create(ctx context.Context, rate *models.Rate) error {
 	return nil
 }
 
+// UpdateResult persists the outcome of a price fetch job for the rate
+// identified by id. Pass a nil price (with status RateStatusFailed) when the
+// fetch did not succeed.
+func (r *RateRepository) UpdateResult(ctx context.Context, id string, price *float64, status models.RateStatus, priceTimestamp *time.Time) error {
+	query := `
+		UPDATE rates
+		SET price = $2, status = $3, price_timestamp = $4, updated_at = now()
+		WHERE id = $1
+	`
+
+	if _, err := r.db.ExecContext(ctx, query, id, nullFloat64(price), string(status), nullTime(priceTimestamp)); err != nil {
+		return fmt.Errorf("failed to update rate result: %w", err)
+	}
+
+	return nil
+}
+
 func (r *RateRepository) GetByID(ctx context.Context, id string) (*models.Rate, error) {
 	query := `
 		SELECT id, base_currency_id, quote_currency_id, price, status, price_timestamp, updated_at, created_at

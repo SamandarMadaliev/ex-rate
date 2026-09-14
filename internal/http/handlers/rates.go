@@ -3,16 +3,25 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"net/http"
 
 	"github.com/SamandarMadaliev/ex-rate/internal/http/helpers"
 	"github.com/SamandarMadaliev/ex-rate/internal/http/schemas"
+	"github.com/SamandarMadaliev/ex-rate/internal/jobs"
 	"github.com/SamandarMadaliev/ex-rate/internal/models"
 	"github.com/SamandarMadaliev/ex-rate/internal/repositories"
+	"github.com/SamandarMadaliev/ex-rate/internal/services"
+	"github.com/SamandarMadaliev/ex-rate/internal/worker"
 	"github.com/go-chi/chi/v5"
 )
 
-func CreateRateHandler(rateRepo *repositories.RateRepository, currencyRepo *repositories.CurrencyRepository) http.HandlerFunc {
+func CreateRateHandler(
+	rateRepo *repositories.RateRepository,
+	currencyRepo *repositories.CurrencyRepository,
+	workers *worker.Pool,
+	priceService *services.ExRateService,
+) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req schemas.CreateRateRequest
 		if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -49,6 +58,10 @@ func CreateRateHandler(rateRepo *repositories.RateRepository, currencyRepo *repo
 		if err := rateRepo.Create(r.Context(), rate); err != nil {
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to create rate")
 			return
+		}
+
+		if err := workers.Submit(jobs.FetchRateJob(rate.ID, rateRepo, currencyRepo, priceService)); err != nil {
+			log.Printf("failed to enqueue rate fetch job for %s: %v", rate.ID, err)
 		}
 
 		w.WriteHeader(http.StatusCreated)

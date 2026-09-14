@@ -9,14 +9,17 @@ import (
 
 	router "github.com/SamandarMadaliev/ex-rate/internal/http"
 	"github.com/SamandarMadaliev/ex-rate/internal/repositories"
+	"github.com/SamandarMadaliev/ex-rate/internal/services"
+	"github.com/SamandarMadaliev/ex-rate/internal/worker"
 	"github.com/SamandarMadaliev/ex-rate/pkg/config"
 	"github.com/SamandarMadaliev/ex-rate/pkg/database/postgres"
 )
 
 type App struct {
-	config *config.Config
-	db     *sql.DB
-	server *http.Server
+	config  *config.Config
+	db      *sql.DB
+	server  *http.Server
+	workers *worker.Pool
 }
 
 func NewApp(config *config.Config) (*App, error) {
@@ -28,7 +31,10 @@ func NewApp(config *config.Config) (*App, error) {
 	currencyRepo := repositories.NewCurrencyRepository(db)
 	rateRepo := repositories.NewRateRepository(db)
 
-	routes := router.NewRouter(db, currencyRepo, rateRepo)
+	workers := worker.NewPool(config.Worker.Count, config.Worker.BufferSize)
+	priceService := services.NewService(nil, config.ExRateAPI.URL, config.ExRateAPI.Token)
+
+	routes := router.NewRouter(db, currencyRepo, rateRepo, workers, priceService)
 
 	server := &http.Server{
 		Addr:              config.Server.Host + ":" + config.Server.Port,
@@ -40,12 +46,17 @@ func NewApp(config *config.Config) (*App, error) {
 	}
 
 	app := App{
-		config: config,
-		db:     db,
-		server: server,
+		config:  config,
+		db:      db,
+		server:  server,
+		workers: workers,
 	}
 
 	return &app, nil
+}
+
+func (a App) SubmitJob(job worker.Job) error {
+	return a.workers.Submit(job)
 }
 
 func (a App) Run() error {
@@ -57,6 +68,8 @@ func (a App) Stop() error {
 	defer cancel()
 
 	shutdownErr := a.server.Shutdown(ctx)
+	a.workers.Stop()
+
 	closeErr := a.db.Close()
 
 	return errors.Join(shutdownErr, closeErr)
