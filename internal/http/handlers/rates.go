@@ -48,14 +48,17 @@ func CreateRateHandler(
 
 		baseValid, quoteValid, err := currencyRepo.ValidateCurrencyPairByIDs(r.Context(), req.BaseCurrencyID, req.QuoteCurrencyID)
 		if err != nil {
+			log.Printf("create rate: failed to validate pair %d/%d: %v", req.BaseCurrencyID, req.QuoteCurrencyID, err)
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to validate currency pair")
 			return
 		}
 		if !baseValid {
+			log.Printf("create rate: base currency %d not found or inactive", req.BaseCurrencyID)
 			helpers.WriteError(w, http.StatusUnprocessableEntity, "base currency not found or inactive")
 			return
 		}
 		if !quoteValid {
+			log.Printf("create rate: quote currency %d not found or inactive", req.QuoteCurrencyID)
 			helpers.WriteError(w, http.StatusUnprocessableEntity, "quote currency not found or inactive")
 			return
 		}
@@ -68,12 +71,15 @@ func CreateRateHandler(
 		}
 
 		if err := rateRepo.Create(r.Context(), rate); err != nil {
+			log.Printf("create rate: failed to insert for %d/%d: %v", req.BaseCurrencyID, req.QuoteCurrencyID, err)
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to create rate")
 			return
 		}
 
 		if err := workers.Submit(jobs.FetchRateJob(rate.ID, rateRepo, currencyRepo, priceService)); err != nil {
-			log.Printf("failed to enqueue rate fetch job for %s: %v", rate.ID, err)
+			log.Printf("create rate: failed to enqueue fetch job for %s: %v", rate.ID, err)
+		} else {
+			log.Printf("create rate: created %s for %d/%d, fetch job enqueued", rate.ID, rate.BaseCurrencyID, rate.QuoteCurrencyID)
 		}
 
 		w.WriteHeader(http.StatusCreated)
@@ -105,6 +111,7 @@ func GetRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 				helpers.WriteError(w, http.StatusNotFound, "rate not found")
 				return
 			}
+			log.Printf("get rate: failed to load %s: %v", id, err)
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to get rate")
 			return
 		}
@@ -139,6 +146,7 @@ func LatestRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 				helpers.WriteError(w, http.StatusNotFound, "rate not found")
 				return
 			}
+			log.Printf("latest rate: failed to load %d/%d: %v", req.BaseCurrencyID, req.QuoteCurrencyID, err)
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to get latest rate")
 			return
 		}

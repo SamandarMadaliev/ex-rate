@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"database/sql"
+	"log"
 	"net/http"
 
 	"github.com/SamandarMadaliev/ex-rate/internal/http/helpers"
@@ -20,6 +21,7 @@ import (
 func HealthHandler(db *sql.DB) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if err := db.PingContext(r.Context()); err != nil {
+			log.Printf("health: database unavailable: %v", err)
 			helpers.WriteError(w, http.StatusServiceUnavailable, "database unavailable")
 			return
 		}

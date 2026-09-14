@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"log"
 	"net/http"
 
 	"github.com/SamandarMadaliev/ex-rate/internal/http/helpers"
@@ -23,6 +24,7 @@ func CurrenciesHandler(repo *repositories.CurrencyRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		currencies, err := repo.List(r.Context())
 		if err != nil {
+			log.Printf("currencies: failed to list: %v", err)
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to list currencies")
 			return
 		}
