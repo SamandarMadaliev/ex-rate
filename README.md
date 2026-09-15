@@ -58,3 +58,13 @@ for the background pool, and `EX_RATE_API_URL` / `EX_RATE_API_TOKEN` for the pri
 make test      # go test ./...
 make swagger   # regenerate docs/ after changing an endpoint or its schemas
 ```
+
+### What I would add
+
+- No retries or backoff on a failed price fetch. On failed status rates we can set the retry.
+- No pagination on `GET /currencies` or a list endpoint for rates. But because of list of currencies are currently limited, it was not added for now.
+- Also we could add auth. At least base auth. But it was not listed in the requirements.
+- Putting validation on creating a rate. If the same request for the same pair of currency was made during the N period of time do not send a concurrent request for the external api but return the last result.
+
+
+s
