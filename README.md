@@ -12,6 +12,9 @@ worker fetches the price from an external rate provider and updates the row to
 - An in-process worker pool for background price-fetch jobs
 - Swagger/OpenAPI docs via [swaggo](https://github.com/swaggo/swag)
 
+> [!Important]
+> The api that is used for the fetching the currencies failes if the base currency is not `EUR`.
+
 ## Quick start
 
 Prerequisites: Docker (with Compose).
