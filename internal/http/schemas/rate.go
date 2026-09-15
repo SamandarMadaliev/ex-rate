@@ -4,26 +4,57 @@ import (
 	"errors"
 	"net/http"
 	"strconv"
+	"strings"
+	"time"
+
+	"github.com/SamandarMadaliev/ex-rate/internal/models"
 )
 
 type CreateRateRequest struct {
-	BaseCurrencyID  int64 `json:"base_currency_id"`
-	QuoteCurrencyID int64 `json:"quote_currency_id"`
+	BaseCurrency  string `json:"base_currency"`
+	QuoteCurrency string `json:"quote_currency"`
 }
 
 type CreateRateResponse struct {
 	ID string `json:"id"`
 }
 
+// RateResponse is the JSON shape returned for a single rate. It mirrors
+// models.Rate but exposes the currency pair as slugs (e.g. "USD") instead of
+// internal currency IDs.
+type RateResponse struct {
+	ID             string            `json:"id"`
+	BaseCurrency   string            `json:"base_currency"`
+	QuoteCurrency  string            `json:"quote_currency"`
+	Price          *float64          `json:"price,omitempty"`
+	Status         models.RateStatus `json:"status"`
+	PriceTimestamp *time.Time        `json:"price_timestamp,omitempty"`
+	UpdatedAt      *time.Time        `json:"updated_at,omitempty"`
+	CreatedAt      time.Time         `json:"created_at"`
+}
+
+func NewRateResponse(rate *models.Rate, baseCurrency, quoteCurrency string) RateResponse {
+	return RateResponse{
+		ID:             rate.ID,
+		BaseCurrency:   baseCurrency,
+		QuoteCurrency:  quoteCurrency,
+		Price:          rate.Price,
+		Status:         rate.Status,
+		PriceTimestamp: rate.PriceTimestamp,
+		UpdatedAt:      rate.UpdatedAt,
+		CreatedAt:      rate.CreatedAt,
+	}
+}
+
 func ValidateCreateRateRequest(req CreateRateRequest) error {
-	if req.BaseCurrencyID <= 0 {
-		return errors.New("base_currency_id is required")
+	if strings.TrimSpace(req.BaseCurrency) == "" {
+		return errors.New("base_currency is required")
 	}
-	if req.QuoteCurrencyID <= 0 {
-		return errors.New("quote_currency_id is required")
+	if strings.TrimSpace(req.QuoteCurrency) == "" {
+		return errors.New("quote_currency is required")
 	}
-	if req.BaseCurrencyID == req.QuoteCurrencyID {
-		return errors.New("base_currency_id and quote_currency_id must differ")
+	if strings.EqualFold(req.BaseCurrency, req.QuoteCurrency) {
+		return errors.New("base_currency and quote_currency must differ")
 	}
 	return nil
 }

@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/SamandarMadaliev/ex-rate/internal/models"
 )
@@ -44,33 +45,42 @@ func (r *CurrencyRepository) List(ctx context.Context) ([]*models.Currency, erro
 	return currencies, nil
 }
 
-func (r *CurrencyRepository) ValidateCurrencyPairByIDs(ctx context.Context, baseCurrencyID, quoteCurrencyID int64) (baseValid bool, quoteValid bool, err error) {
-	query := `SELECT id FROM currencies WHERE id IN ($1, $2) AND is_active = true`
+// GetIDsBySlugs resolves the currency IDs for the given pair of currency
+// slugs (e.g. "USD"), matched case-insensitively. baseValid/quoteValid
+// report whether each slug matched an active currency; baseID/quoteID are
+// only meaningful when the corresponding valid flag is true.
+func (r *CurrencyRepository) GetIDsBySlugs(ctx context.Context, baseSlug, quoteSlug string) (baseID int64, quoteID int64, baseValid bool, quoteValid bool, err error) {
+	query := `SELECT id, slug FROM currencies WHERE upper(slug) IN (upper($1), upper($2)) AND is_active = true`
 
-	rows, err := r.db.QueryContext(ctx, query, baseCurrencyID, quoteCurrencyID)
+	rows, err := r.db.QueryContext(ctx, query, baseSlug, quoteSlug)
 	if err != nil {
-		return false, false, fmt.Errorf("failed to validate currency pair: %w", err)
+		return 0, 0, false, false, fmt.Errorf("failed to validate currency pair: %w", err)
 	}
 	defer rows.Close()
 
 	for rows.Next() {
-		var id int64
-		if err := rows.Scan(&id); err != nil {
-			return false, false, fmt.Errorf("failed to scan currency id: %w", err)
+		var (
+			id   int64
+			slug string
+		)
+		if err := rows.Scan(&id, &slug); err != nil {
+			return 0, 0, false, false, fmt.Errorf("failed to scan currency: %w", err)
 		}
-		if id == baseCurrencyID {
+		if strings.EqualFold(slug, baseSlug) {
+			baseID = id
 			baseValid = true
 		}
-		if id == quoteCurrencyID {
+		if strings.EqualFold(slug, quoteSlug) {
+			quoteID = id
 			quoteValid = true
 		}
 	}
 
 	if err := rows.Err(); err != nil {
-		return false, false, fmt.Errorf("failed to validate currency pair: %w", err)
+		return 0, 0, false, false, fmt.Errorf("failed to validate currency pair: %w", err)
 	}
 
-	return baseValid, quoteValid, nil
+	return baseID, quoteID, baseValid, quoteValid, nil
 }
 
 // GetSlugsByIDs resolves the currency slugs (e.g. "USD") for the given pair

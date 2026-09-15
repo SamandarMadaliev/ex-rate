@@ -33,8 +33,8 @@ func NewRouter(
 		r.Get("/health", handlers.HealthHandler(db))
 		r.Get("/currencies", handlers.CurrenciesHandler(currencyRepo))
 		r.Post("/rates", handlers.CreateRateHandler(rateRepo, currencyRepo, workers, priceService))
-		r.Get("/rates/latest", handlers.LatestRateHandler(rateRepo))
-		r.Get("/rates/{id}", handlers.GetRateHandler(rateRepo))
+		r.Get("/rates/latest", handlers.LatestRateHandler(rateRepo, currencyRepo))
+		r.Get("/rates/{id}", handlers.GetRateHandler(rateRepo, currencyRepo))
 	})
 
 	return router

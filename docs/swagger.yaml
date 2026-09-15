@@ -2,10 +2,10 @@ basePath: /api/v1
 definitions:
   github_com_SamandarMadaliev_ex-rate_internal_http_schemas.CreateRateRequest:
     properties:
-      base_currency_id:
-        type: integer
-      quote_currency_id:
-        type: integer
+      base_currency:
+        type: string
+      quote_currency:
+        type: string
     type: object
   github_com_SamandarMadaliev_ex-rate_internal_http_schemas.CreateRateResponse:
     properties:
@@ -17,17 +17,10 @@ definitions:
       error:
         type: string
     type: object
-  github_com_SamandarMadaliev_ex-rate_internal_models.Currency:
+  github_com_SamandarMadaliev_ex-rate_internal_http_schemas.RateResponse:
     properties:
-      id:
-        type: integer
-      slug:
+      base_currency:
         type: string
-    type: object
-  github_com_SamandarMadaliev_ex-rate_internal_models.Rate:
-    properties:
-      base_currency_id:
-        type: integer
       created_at:
         type: string
       id:
@@ -36,11 +29,18 @@ definitions:
         type: number
       price_timestamp:
         type: string
-      quote_currency_id:
-        type: integer
+      quote_currency:
+        type: string
       status:
         $ref: '#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.RateStatus'
       updated_at:
+        type: string
+    type: object
+  github_com_SamandarMadaliev_ex-rate_internal_models.Currency:
+    properties:
+      id:
+        type: integer
+      slug:
         type: string
     type: object
   github_com_SamandarMadaliev_ex-rate_internal_models.RateStatus:
@@ -146,7 +146,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.Rate'
+            $ref: '#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.RateResponse'
         "404":
           description: Not Found
           schema:
@@ -179,7 +179,7 @@ paths:
         "200":
           description: OK
           schema:
-            $ref: '#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.Rate'
+            $ref: '#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.RateResponse'
         "400":
           description: Bad Request
           schema:

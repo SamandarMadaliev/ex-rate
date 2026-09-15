@@ -152,7 +152,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.Rate"
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.RateResponse"
                         }
                     },
                     "400": {
@@ -199,7 +199,7 @@ const docTemplate = `{
                     "200": {
                         "description": "OK",
                         "schema": {
-                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.Rate"
+                            "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_http_schemas.RateResponse"
                         }
                     },
                     "404": {
@@ -222,11 +222,11 @@ const docTemplate = `{
         "github_com_SamandarMadaliev_ex-rate_internal_http_schemas.CreateRateRequest": {
             "type": "object",
             "properties": {
-                "base_currency_id": {
-                    "type": "integer"
+                "base_currency": {
+                    "type": "string"
                 },
-                "quote_currency_id": {
-                    "type": "integer"
+                "quote_currency": {
+                    "type": "string"
                 }
             }
         },
@@ -246,22 +246,11 @@ const docTemplate = `{
                 }
             }
         },
-        "github_com_SamandarMadaliev_ex-rate_internal_models.Currency": {
+        "github_com_SamandarMadaliev_ex-rate_internal_http_schemas.RateResponse": {
             "type": "object",
             "properties": {
-                "id": {
-                    "type": "integer"
-                },
-                "slug": {
+                "base_currency": {
                     "type": "string"
-                }
-            }
-        },
-        "github_com_SamandarMadaliev_ex-rate_internal_models.Rate": {
-            "type": "object",
-            "properties": {
-                "base_currency_id": {
-                    "type": "integer"
                 },
                 "created_at": {
                     "type": "string"
@@ -275,13 +264,24 @@ const docTemplate = `{
                 "price_timestamp": {
                     "type": "string"
                 },
-                "quote_currency_id": {
-                    "type": "integer"
+                "quote_currency": {
+                    "type": "string"
                 },
                 "status": {
                     "$ref": "#/definitions/github_com_SamandarMadaliev_ex-rate_internal_models.RateStatus"
                 },
                 "updated_at": {
+                    "type": "string"
+                }
+            }
+        },
+        "github_com_SamandarMadaliev_ex-rate_internal_models.Currency": {
+            "type": "object",
+            "properties": {
+                "id": {
+                    "type": "integer"
+                },
+                "slug": {
                     "type": "string"
                 }
             }

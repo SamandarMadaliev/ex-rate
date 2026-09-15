@@ -46,32 +46,32 @@ func CreateRateHandler(
 			return
 		}
 
-		baseValid, quoteValid, err := currencyRepo.ValidateCurrencyPairByIDs(r.Context(), req.BaseCurrencyID, req.QuoteCurrencyID)
+		baseID, quoteID, baseValid, quoteValid, err := currencyRepo.GetIDsBySlugs(r.Context(), req.BaseCurrency, req.QuoteCurrency)
 		if err != nil {
-			log.Printf("create rate: failed to validate pair %d/%d: %v", req.BaseCurrencyID, req.QuoteCurrencyID, err)
+			log.Printf("create rate: failed to validate pair %s/%s: %v", req.BaseCurrency, req.QuoteCurrency, err)
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to validate currency pair")
 			return
 		}
 		if !baseValid {
-			log.Printf("create rate: base currency %d not found or inactive", req.BaseCurrencyID)
+			log.Printf("create rate: base currency %q not found or inactive", req.BaseCurrency)
 			helpers.WriteError(w, http.StatusUnprocessableEntity, "base currency not found or inactive")
 			return
 		}
 		if !quoteValid {
-			log.Printf("create rate: quote currency %d not found or inactive", req.QuoteCurrencyID)
+			log.Printf("create rate: quote currency %q not found or inactive", req.QuoteCurrency)
 			helpers.WriteError(w, http.StatusUnprocessableEntity, "quote currency not found or inactive")
 			return
 		}
 
 		rate := &models.Rate{
-			BaseCurrencyID:  req.BaseCurrencyID,
-			QuoteCurrencyID: req.QuoteCurrencyID,
+			BaseCurrencyID:  baseID,
+			QuoteCurrencyID: quoteID,
 			Price:           nil,
 			Status:          models.RateStatusPending,
 		}
 
 		if err := rateRepo.Create(r.Context(), rate); err != nil {
-			log.Printf("create rate: failed to insert for %d/%d: %v", req.BaseCurrencyID, req.QuoteCurrencyID, err)
+			log.Printf("create rate: failed to insert for %s/%s: %v", req.BaseCurrency, req.QuoteCurrency, err)
 			helpers.WriteError(w, http.StatusInternalServerError, "failed to create rate")
 			return
 		}
@@ -93,11 +93,11 @@ func CreateRateHandler(
 // @Tags         rates
 // @Produce      json
 // @Param        id   path      string  true  "Rate ID (UUID)"
-// @Success      200  {object}  models.Rate
+// @Success      200  {object}  schemas.RateResponse
 // @Failure      404  {object}  schemas.ErrorResponse
 // @Failure      500  {object}  schemas.ErrorResponse
 // @Router       /rates/{id} [get]
-func GetRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
+func GetRateHandler(rateRepo *repositories.RateRepository, currencyRepo *repositories.CurrencyRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")
 		if !helpers.IsValidUUID(id) {
@@ -116,7 +116,14 @@ func GetRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 			return
 		}
 
-		json.NewEncoder(w).Encode(rate)
+		baseSlug, quoteSlug, err := currencyRepo.GetSlugsByIDs(r.Context(), rate.BaseCurrencyID, rate.QuoteCurrencyID)
+		if err != nil {
+			log.Printf("get rate: failed to resolve currency slugs for %s: %v", id, err)
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to get rate")
+			return
+		}
+
+		json.NewEncoder(w).Encode(schemas.NewRateResponse(rate, baseSlug, quoteSlug))
 	}
 }
 
@@ -127,12 +134,12 @@ func GetRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 // @Produce      json
 // @Param        base   query     int  true  "Base currency ID"
 // @Param        quote  query     int  true  "Quote currency ID"
-// @Success      200    {object}  models.Rate
+// @Success      200    {object}  schemas.RateResponse
 // @Failure      400    {object}  schemas.ErrorResponse
 // @Failure      404    {object}  schemas.ErrorResponse
 // @Failure      500    {object}  schemas.ErrorResponse
 // @Router       /rates/latest [get]
-func LatestRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
+func LatestRateHandler(rateRepo *repositories.RateRepository, currencyRepo *repositories.CurrencyRepository) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		req, err := schemas.ParseGetLatestRateRequest(r)
 		if err != nil {
@@ -151,6 +158,13 @@ func LatestRateHandler(rateRepo *repositories.RateRepository) http.HandlerFunc {
 			return
 		}
 
-		json.NewEncoder(w).Encode(rate)
+		baseSlug, quoteSlug, err := currencyRepo.GetSlugsByIDs(r.Context(), rate.BaseCurrencyID, rate.QuoteCurrencyID)
+		if err != nil {
+			log.Printf("latest rate: failed to resolve currency slugs for %d/%d: %v", req.BaseCurrencyID, req.QuoteCurrencyID, err)
+			helpers.WriteError(w, http.StatusInternalServerError, "failed to get latest rate")
+			return
+		}
+
+		json.NewEncoder(w).Encode(schemas.NewRateResponse(rate, baseSlug, quoteSlug))
 	}
 }

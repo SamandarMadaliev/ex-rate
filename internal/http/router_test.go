@@ -137,8 +137,8 @@ func TestCurrenciesHandler(t *testing.T) {
 }
 
 func TestCreateRateHandler(t *testing.T) {
-	body := func(base, quote int64) *bytes.Buffer {
-		b, _ := json.Marshal(schemas.CreateRateRequest{BaseCurrencyID: base, QuoteCurrencyID: quote})
+	body := func(base, quote string) *bytes.Buffer {
+		b, _ := json.Marshal(schemas.CreateRateRequest{BaseCurrency: base, QuoteCurrency: quote})
 		return bytes.NewBuffer(b)
 	}
 
@@ -159,7 +159,7 @@ func TestCreateRateHandler(t *testing.T) {
 		handler, mock := newTestRouter(t)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body(1, 1))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body("USD", "usd"))
 		handler.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusBadRequest {
@@ -170,11 +170,11 @@ func TestCreateRateHandler(t *testing.T) {
 
 	t.Run("currency validation query fails", func(t *testing.T) {
 		handler, mock := newTestRouter(t)
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM currencies WHERE id IN")).
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id, slug FROM currencies WHERE upper(slug) IN")).
 			WillReturnError(errors.New("db down"))
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body(1, 2))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body("USD", "EUR"))
 		handler.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusInternalServerError {
@@ -185,12 +185,12 @@ func TestCreateRateHandler(t *testing.T) {
 
 	t.Run("base currency invalid", func(t *testing.T) {
 		handler, mock := newTestRouter(t)
-		rows := sqlmock.NewRows([]string{"id"}).AddRow(int64(2))
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM currencies WHERE id IN")).
+		rows := sqlmock.NewRows([]string{"id", "slug"}).AddRow(int64(2), "EUR")
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id, slug FROM currencies WHERE upper(slug) IN")).
 			WillReturnRows(rows)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body(1, 2))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body("USD", "EUR"))
 		handler.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusUnprocessableEntity {
@@ -201,12 +201,12 @@ func TestCreateRateHandler(t *testing.T) {
 
 	t.Run("quote currency invalid", func(t *testing.T) {
 		handler, mock := newTestRouter(t)
-		rows := sqlmock.NewRows([]string{"id"}).AddRow(int64(1))
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM currencies WHERE id IN")).
+		rows := sqlmock.NewRows([]string{"id", "slug"}).AddRow(int64(1), "USD")
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id, slug FROM currencies WHERE upper(slug) IN")).
 			WillReturnRows(rows)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body(1, 2))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body("USD", "EUR"))
 		handler.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusUnprocessableEntity {
@@ -217,14 +217,14 @@ func TestCreateRateHandler(t *testing.T) {
 
 	t.Run("rate creation fails", func(t *testing.T) {
 		handler, mock := newTestRouter(t)
-		validRows := sqlmock.NewRows([]string{"id"}).AddRow(int64(1)).AddRow(int64(2))
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM currencies WHERE id IN")).
+		validRows := sqlmock.NewRows([]string{"id", "slug"}).AddRow(int64(1), "USD").AddRow(int64(2), "EUR")
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id, slug FROM currencies WHERE upper(slug) IN")).
 			WillReturnRows(validRows)
 		mock.ExpectQuery(regexp.QuoteMeta("INSERT INTO rates")).
 			WillReturnError(errors.New("db down"))
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body(1, 2))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body("USD", "EUR"))
 		handler.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusInternalServerError {
@@ -235,8 +235,8 @@ func TestCreateRateHandler(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		handler, mock := newTestRouter(t)
-		validRows := sqlmock.NewRows([]string{"id"}).AddRow(int64(1)).AddRow(int64(2))
-		mock.ExpectQuery(regexp.QuoteMeta("SELECT id FROM currencies WHERE id IN")).
+		validRows := sqlmock.NewRows([]string{"id", "slug"}).AddRow(int64(1), "USD").AddRow(int64(2), "EUR")
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id, slug FROM currencies WHERE upper(slug) IN")).
 			WillReturnRows(validRows)
 
 		createdRows := sqlmock.NewRows([]string{"id", "created_at"}).
@@ -245,7 +245,7 @@ func TestCreateRateHandler(t *testing.T) {
 			WillReturnRows(createdRows)
 
 		rec := httptest.NewRecorder()
-		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body(1, 2))
+		req := httptest.NewRequest(http.MethodPost, "/api/v1/rates", body("USD", "EUR"))
 		handler.ServeHTTP(rec, req)
 
 		if rec.Code != http.StatusCreated {
@@ -317,6 +317,9 @@ func TestGetRateHandler(t *testing.T) {
 		}).AddRow(id, int64(1), int64(2), price, string(models.RateStatusCompleted), time.Now(), time.Now(), time.Now())
 		mock.ExpectQuery(regexp.QuoteMeta("FROM rates")).
 			WillReturnRows(rows)
+		slugRows := sqlmock.NewRows([]string{"id", "slug"}).AddRow(int64(1), "USD").AddRow(int64(2), "EUR")
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id, slug FROM currencies WHERE id IN")).
+			WillReturnRows(slugRows)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/rates/"+id, nil)
@@ -326,10 +329,13 @@ func TestGetRateHandler(t *testing.T) {
 			t.Fatalf("expected status 200, got %d", rec.Code)
 		}
 
-		var rate models.Rate
+		var rate schemas.RateResponse
 		decodeJSON(t, rec.Body, &rate)
 		if rate.ID != id || rate.Price == nil || *rate.Price != price {
 			t.Fatalf("unexpected rate: %+v", rate)
+		}
+		if rate.BaseCurrency != "USD" || rate.QuoteCurrency != "EUR" {
+			t.Fatalf("unexpected currency pair: %+v", rate)
 		}
 		assertExpectationsMet(t, mock)
 	})
@@ -373,6 +379,9 @@ func TestLatestRateHandler(t *testing.T) {
 		}).AddRow(id, int64(1), int64(2), 1.5, string(models.RateStatusCompleted), time.Now(), time.Now(), time.Now())
 		mock.ExpectQuery(regexp.QuoteMeta("FROM rates")).
 			WillReturnRows(rows)
+		slugRows := sqlmock.NewRows([]string{"id", "slug"}).AddRow(int64(1), "USD").AddRow(int64(2), "EUR")
+		mock.ExpectQuery(regexp.QuoteMeta("SELECT id, slug FROM currencies WHERE id IN")).
+			WillReturnRows(slugRows)
 
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodGet, "/api/v1/rates/latest?base=1&quote=2", nil)
@@ -382,9 +391,9 @@ func TestLatestRateHandler(t *testing.T) {
 			t.Fatalf("expected status 200, got %d", rec.Code)
 		}
 
-		var rate models.Rate
+		var rate schemas.RateResponse
 		decodeJSON(t, rec.Body, &rate)
-		if rate.ID != id {
+		if rate.ID != id || rate.BaseCurrency != "USD" || rate.QuoteCurrency != "EUR" {
 			t.Fatalf("unexpected rate: %+v", rate)
 		}
 		assertExpectationsMet(t, mock)
